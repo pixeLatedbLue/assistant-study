@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- For a copy hosted outside Apps Script (GitHub Pages): put the Apps Script
+     web app URL (it ends in /exec) in content="". Inside Apps Script, leave it empty. -->
+<meta name="study-api" content="https://script.google.com/macros/s/AKfycbxrhEherb5IKZi5oxNOICa3j1QOE4Tq_KSY3m-3YjxpXiuTLtbZsRMeaAZEvxUzb9NLJw/exec">
+<title>How should an assistant respond?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #000000;
+    --muted: #404040;
+    --line: #cfcfcf;
+    --soft: #f3f3f3;
+    --focus: #1a56db;
+    --error: #a11b1b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: Montserrat, "Segoe UI", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 28px 16px 56px; }
+  h1 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 16px; font-weight: 700; }
+  h2 { font-size: 1.1rem; margin: 22px 0 12px; font-weight: 600; }
+  p { margin: 0 0 12px; }
+  .warning {
+    border: 1px solid var(--ink);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 16px 0;
+  }
+  .warning strong { display: block; margin-bottom: 4px; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 20px; cursor: pointer; }
+  .consent input { width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: #000; }
+  button {
+    font: inherit;
+    color: var(--ink);
+    background: #fff;
+    border: 1.5px solid var(--ink);
+    border-radius: 10px;
+    padding: 11px 18px;
+    cursor: pointer;
+    min-height: 46px;
+  }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button.primary { background: var(--ink); color: #fff; font-weight: 600; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .progress-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--muted); }
+  .bar { height: 6px; background: var(--soft); border-radius: 3px; margin: 6px 0 20px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--ink); transition: width 0.25s; }
+  .note { font-size: 0.9rem; color: var(--muted); margin-bottom: 10px; }
+  .msg {
+    background: var(--soft);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin: 0 0 4px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .status { font-size: 0.88rem; font-style: italic; color: var(--muted); margin: 0 0 12px 4px; }
+  .current-label { font-size: 0.9rem; font-weight: 600; margin: 16px 0 6px; }
+  .msg.current { background: #fff; border: 2px solid var(--ink); font-weight: 500; }
+  .options { display: grid; gap: 10px; margin: 8px 0 18px; }
+  .option { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 12px 14px; }
+  .option .key {
+    flex: none; width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid currentColor; display: grid; place-items: center;
+    font-size: 0.85rem; font-weight: 600;
+  }
+  .option[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .nav { display: flex; gap: 10px; flex-wrap: wrap; }
+  .nav .primary { margin-left: auto; }
+  #done .nav .primary { margin-left: 0; }
+  .live { min-height: 1.6em; margin: 12px 0 0; font-size: 0.92rem; }
+  .live.error { color: var(--error); font-weight: 600; }
+  .hint { font-size: 0.82rem; color: var(--muted); margin-top: 14px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 420px) {
+    .nav button { flex: 1 1 auto; }
+    .nav .primary { flex-basis: 100%; order: -1; margin-left: 0; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <!-- Start: purpose, content warning, consent -->
+  <section id="start">
+    <h1>How should an assistant respond?</h1>
+    <p>This study asks how people judge requests made to a conversational assistant.
+      You will read short sequences of user messages and decide whether the final
+      request should be answered. Your answers help us study agreement and ambiguity.
+      They are a separate perception study, not the official safety labels.</p>
+    <p>It takes about 5 minutes for 10 questions. There are no right or wrong answers.</p>
+    <div class="warning" role="note">
+      <strong>Content warning</strong>
+      Some messages ask for harmful or sensitive things. No assistant answer text
+      is shown. Participation is voluntary. You can skip an item or stop at any time;
+      answers already submitted are retained for this study.
+    </div>
+    <p>We collect no name, email or account: only your answers, a random visit
+      number and the time of each answer.</p>
+    <label class="consent">
+      <input type="checkbox" id="consent">
+      <span>I am 18 or older, have read the information above, and consent to my
+        anonymous answers being used for this study.</span>
+    </label>
+    <button class="primary" id="startBtn" disabled>Start</button>
+    <p class="live" id="startLive" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- One question at a time -->
+  <section id="study" hidden>
+    <div class="progress-row"><span id="progressText"></span><span id="savedText"></span></div>
+    <div class="bar" aria-hidden="true"><div id="barFill"></div></div>
+
+    <p class="note" id="historyNote">Earlier messages from the same user (most recent last).
+      Only these recent messages are shown, and the assistant's replies are not.</p>
+    <div id="history"></div>
+
+    <div class="current-label">The message to judge</div>
+    <div class="msg current" id="current"></div>
+
+    <h2 id="question" tabindex="-1"></h2>
+    <div class="options" id="options" role="group" aria-labelledby="question"></div>
+
+    <div class="nav">
+      <button id="backBtn">Back</button>
+      <button id="skipBtn">Skip</button>
+      <button class="primary" id="saveBtn">Save and next</button>
+    </div>
+    <p class="live" id="studyLive" role="status" aria-live="polite"></p>
+    <p class="hint">Keyboard: 1 to 4 to choose, Enter to save.</p>
+  </section>
+
+  <!-- End of a round -->
+  <section id="done" hidden>
+    <h1>Thank you!</h1>
+    <p id="doneText"></p>
+    <p id="moreText">If you have a few more minutes, another round helps a lot: every
+      question needs at least three people's answers.</p>
+    <div class="nav">
+      <button class="primary" id="moreBtn">Answer 10 more</button>
+    </div>
+    <p class="live" id="doneLive" role="status" aria-live="polite"></p>
+    <p class="note">You can close this page whenever you like.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var ANSWERS = [
+    {value: 'fine', label: 'Fine to answer'},
+    {value: 'fine_with_care', label: 'Fine, but only with care or for the right person'},
+    {value: 'should_not', label: 'Should not be answered'},
+    {value: 'unsure', label: 'Not sure'}
+  ];
+  var STORE_KEY = 'prism-crowd-visit-v1';
+
+  // ------------------------------------------------------------ state
+  var state = restore() || {
+    respondent: null, consent: false, queue: [], index: 0,
+    choice: {}, saved: {}, remaining: null
+  };
+  var busy = false;
+
+  function restore() {
+    try {
+      var raw = window.sessionStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function persist() {
+    try { window.sessionStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* memory only */ }
+  }
+  function newVisitId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return 'r-' + window.crypto.randomUUID();
+    }
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return 'r-' + Array.prototype.map.call(bytes, function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  }
+
+  // ------------------------------------------------------------ server calls
+  // Inside Apps Script the page calls the server directly; a hosted copy (GitHub
+  // Pages) posts JSON to the web app URL in <meta name="study-api">.
+  var API_URL = (document.querySelector('meta[name="study-api"]') || {}).content || '';
+
+  function call(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (window.google && window.google.script && window.google.script.run) {
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+        runner[name].apply(runner, args);
+      });
+    }
+    if (!API_URL) return Promise.reject(new Error('The study is not set up yet.'));
+    var body = name === 'assign'
+      ? {action: 'assign', respondent: args[0], consent: args[1]}
+      : {action: 'save', respondent: args[0], item_id: args[1], answer: args[2]};
+    return fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},  // a simple request: no CORS preflight
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Could not reach the study server (' + res.status + ').');
+      return res.json();
+    }, function () {
+      throw new Error('Could not reach the study server. Check your connection.');
+    }).then(function (data) {
+      if (!data || !data.ok) throw new Error((data && data.error) || 'Something went wrong.');
+      return data.result;
+    });
+  }
+  function messageOf(err) {
+    var m = err && err.message ? String(err.message) : String(err || '');
+    return m.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong.';
+  }
+
+  // ------------------------------------------------------------ elements
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    start: $('start'), study: $('study'), done: $('done'),
+    consent: $('consent'), startBtn: $('startBtn'), startLive: $('startLive'),
+    progressText: $('progressText'), savedText: $('savedText'), barFill: $('barFill'),
+    historyNote: $('historyNote'), history: $('history'), current: $('current'),
+    question: $('question'), options: $('options'),
+    backBtn: $('backBtn'), skipBtn: $('skipBtn'), saveBtn: $('saveBtn'), studyLive: $('studyLive'),
+    doneText: $('doneText'), moreText: $('moreText'), moreBtn: $('moreBtn'), doneLive: $('doneLive')
+  };
+
+  function show(section) {
+    ['start', 'study', 'done'].forEach(function (s) { el[s].hidden = (s !== section); });
+    window.scrollTo(0, 0);
+  }
+  function setLive(node, text, isError) {
+    node.textContent = text || '';
+    node.className = 'live' + (isError ? ' error' : '');
+  }
+  function savedCount() { return Object.keys(state.saved).length; }
+
+  // ------------------------------------------------------------ rendering
+  var optionButtons = ANSWERS.map(function (a, i) {
+    var b = document.createElement('button');
+    b.className = 'option';
+    b.type = 'button';
+    b.setAttribute('aria-pressed', 'false');
+    b.dataset.value = a.value;
+    var key = document.createElement('span');
+    key.className = 'key';
+    key.textContent = String(i + 1);
+    var text = document.createElement('span');
+    text.textContent = a.label;
+    b.appendChild(key);
+    b.appendChild(text);
+    b.addEventListener('click', function () { choose(a.value); });
+    el.options.appendChild(b);
+    return b;
+  });
+
+  function currentItem() { return state.queue[state.index]; }
+
+  function render() {
+    if (!state.consent || !state.queue.length) { show('start'); return; }
+    if (state.index >= state.queue.length) { renderDone(); return; }
+    var item = currentItem();
+    var n = state.queue.length;
+    el.progressText.textContent = 'Question ' + (state.index + 1) + ' of ' + n;
+    el.savedText.textContent = savedCount() + ' saved';
+    el.barFill.style.width = Math.round(100 * state.index / n) + '%';
+
+    el.history.textContent = '';
+    var history = item.history || [];
+    el.historyNote.hidden = history.length === 0;
+    history.forEach(function (h) {
+      var m = document.createElement('div');
+      m.className = 'msg';
+      m.textContent = h.user_text;
+      var s = document.createElement('div');
+      s.className = 'status';
+      s.textContent = h.assistant_status;
+      el.history.appendChild(m);
+      el.history.appendChild(s);
+    });
+    el.current.textContent = item.user_text;
+    el.question.textContent = item.question;
+    paintChoice();
+    el.backBtn.disabled = state.index === 0 || busy;
+    el.skipBtn.disabled = busy;
+    el.saveBtn.textContent = 'Save and next';
+    setLive(el.studyLive, state.saved[item.item_id] ? 'Saved earlier. Change it and save again to correct it.' : '');
+    show('study');
+    // Move focus off Back/Skip so Enter means "save" on the new question.
+    try { el.question.focus({preventScroll: true}); } catch (e) { el.question.focus(); }
+  }
+
+  function paintChoice() {
+    var item = currentItem();
+    var picked = item ? state.choice[item.item_id] : null;
+    optionButtons.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.value === picked ? 'true' : 'false');
+      b.disabled = busy;
+    });
+    el.saveBtn.disabled = busy || !picked;
+  }
+
+  function renderDone() {
+    var n = savedCount();
+    el.doneText.textContent = 'You answered ' + n + (n === 1 ? ' question.' : ' questions.') +
+      ' Your answers are saved.';
+    var more = state.remaining === null || state.remaining > 0;
+    el.moreText.hidden = !more;
+    el.moreBtn.hidden = !more;
+    if (!more) setLive(el.doneLive, 'You have seen every question in the study.');
+    show('done');
+  }
+
+  // ------------------------------------------------------------ actions
+  function fetchRound(liveNode, button) {
+    if (busy) return;
+    busy = true;
+    if (button) button.disabled = true;
+    setLive(liveNode, 'Loading questions...');
+    call('assign', state.respondent, true).then(function (res) {
+      busy = false;
+      if (button) button.disabled = false;
+      state.queue = state.queue.concat(res.items || []);
+      state.remaining = res.remaining;
+      persist();
+      setLive(liveNode, '');
+      if (!res.items || !res.items.length) { renderDone(); return; }
+      render();
+    }, function (err) {
+      busy = false;
+      if (button) button.disabled = false;
+      setLive(liveNode, messageOf(err) + ' Press the button to try again.', true);
+    });
+  }
+
+  function choose(value) {
+    if (busy) return;
+    var item = currentItem();
+    if (!item) return;
+    state.choice[item.item_id] = value;
+    persist();
+    paintChoice();
+  }
+
+  function saveAndNext() {
+    if (busy) return;
+    var item = currentItem();
+    if (!item) return;
+    var value = state.choice[item.item_id];
+    if (!value) { setLive(el.studyLive, 'Choose an answer first, or press Skip.', true); return; }
+    if (state.saved[item.item_id] === value) { advance(); return; }  // unchanged: no new record
+    busy = true;
+    paintChoice();
+    el.backBtn.disabled = true;
+    el.skipBtn.disabled = true;
+    setLive(el.studyLive, 'Saving...');
+    call('saveAnswer', state.respondent, item.item_id, value).then(function () {
+      busy = false;
+      state.saved[item.item_id] = value;
+      persist();
+      advance();
+    }, function (err) {
+      busy = false;
+      paintChoice();
+      el.backBtn.disabled = state.index === 0;
+      el.skipBtn.disabled = false;
+      el.saveBtn.textContent = 'Retry';
+      setLive(el.studyLive, 'Not saved: ' + messageOf(err) + ' Press Retry.', true);
+    });
+  }
+
+  function advance() {
+    state.index += 1;
+    persist();
+    render();
+  }
+
+  // ------------------------------------------------------------ wiring
+  el.consent.addEventListener('change', function () { el.startBtn.disabled = !el.consent.checked; });
+  el.startBtn.addEventListener('click', function () {
+    if (!el.consent.checked) return;
+    state.respondent = state.respondent || newVisitId();
+    state.consent = true;
+    persist();
+    fetchRound(el.startLive, el.startBtn);
+  });
+  el.saveBtn.addEventListener('click', saveAndNext);
+  el.skipBtn.addEventListener('click', function () { if (!busy) advance(); });
+  el.backBtn.addEventListener('click', function () {
+    if (busy || state.index === 0) return;
+    state.index -= 1;
+    persist();
+    render();
+  });
+  el.moreBtn.addEventListener('click', function () { fetchRound(el.doneLive, el.moreBtn); });
+
+  document.addEventListener('keydown', function (e) {
+    if (el.study.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key >= '1' && e.key <= '4') {
+      choose(ANSWERS[Number(e.key) - 1].value);
+      e.preventDefault();
+    } else if (e.key === 'Enter' &&
+               (e.target.tagName !== 'BUTTON' || e.target.classList.contains('option'))) {
+      saveAndNext();
+      e.preventDefault();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
