@@ -213,18 +213,30 @@
     var body = name === 'assign'
       ? {action: 'assign', respondent: args[0], consent: args[1]}
       : {action: 'save', respondent: args[0], item_id: args[1], answer: args[2]};
+    return post(body, 3).then(function (data) {
+      if (!data || !data.ok) throw new Error((data && data.error) || 'Something went wrong.');
+      return data.result;
+    });
+  }
+  // Google's redirect step after the web app sometimes answers 404 (about 1 request
+  // in 12) even though the script ran. Such a request is repeated a few times. A
+  // repeated save is harmless (a later row with the same answer); a repeated assign
+  // hands out the next items, and the first ones count as held for RESERVE_MINUTES.
+  function post(body, retries) {
     return fetch(API_URL, {
       method: 'POST',
       headers: {'Content-Type': 'text/plain;charset=utf-8'},  // a simple request: no CORS preflight
       body: JSON.stringify(body)
     }).then(function (res) {
+      if (res.status === 404 && retries > 0) {
+        return new Promise(function (resolve) { setTimeout(resolve, 700); }).then(function () {
+          return post(body, retries - 1);
+        });
+      }
       if (!res.ok) throw new Error('Could not reach the study server (' + res.status + ').');
       return res.json();
     }, function () {
       throw new Error('Could not reach the study server. Check your connection.');
-    }).then(function (data) {
-      if (!data || !data.ok) throw new Error((data && data.error) || 'Something went wrong.');
-      return data.result;
     });
   }
   function messageOf(err) {
