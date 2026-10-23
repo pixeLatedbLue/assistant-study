@@ -108,12 +108,16 @@
       is shown. Participation is voluntary. You can skip an item or stop at any time;
       answers already submitted are retained for this study.
     </div>
-    <p>We collect no name, email or account: only your answers, a random visit
-      number and the time of each answer.</p>
+    <p>Your name is required so the study organiser can see who participated. It is
+      stored privately with your visit number and can be linked to your answers.
+      Names are excluded from the answer-analysis export. No email or account is required.</p>
+    <label for="participantName">Your name</label>
+    <input id="participantName" type="text" autocomplete="name" maxlength="100" required
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0;border:1px solid #777;font:inherit">
     <label class="consent">
       <input type="checkbox" id="consent">
       <span>I am 18 or older, have read the information above, and consent to my
-        anonymous answers being used for this study.</span>
+        name being recorded for participation tracking and my answers being used for this study.</span>
     </label>
     <button class="primary" id="startBtn" disabled>Start</button>
     <p class="live" id="startLive" role="status" aria-live="polite"></p>
@@ -211,7 +215,8 @@
     }
     if (!API_URL) return Promise.reject(new Error('The study is not set up yet.'));
     var body = name === 'assign'
-      ? {action: 'assign', respondent: args[0], consent: args[1]}
+      ? {action: 'assign', respondent: args[0], consent: args[1], name: args[2]}
+      : name === 'registerParticipant' ? {action: 'register', respondent: args[0], consent: args[1], name: args[2]}
       : {action: 'save', respondent: args[0], item_id: args[1], answer: args[2]};
     return post(body, 3).then(function (data) {
       if (!data || !data.ok) throw new Error((data && data.error) || 'Something went wrong.');
@@ -248,7 +253,7 @@
   function $(id) { return document.getElementById(id); }
   var el = {
     start: $('start'), study: $('study'), done: $('done'),
-    consent: $('consent'), startBtn: $('startBtn'), startLive: $('startLive'),
+    participantName: $('participantName'), consent: $('consent'), startBtn: $('startBtn'), startLive: $('startLive'),
     progressText: $('progressText'), savedText: $('savedText'), barFill: $('barFill'),
     historyNote: $('historyNote'), history: $('history'), current: $('current'),
     question: $('question'), options: $('options'),
@@ -288,7 +293,7 @@
   function currentItem() { return state.queue[state.index]; }
 
   function render() {
-    if (!state.consent || !state.queue.length) { show('start'); return; }
+    if (!state.consent || !state.name || !state.queue.length) { show('start'); return; }
     if (state.index >= state.queue.length) { renderDone(); return; }
     var item = currentItem();
     var n = state.queue.length;
@@ -348,7 +353,7 @@
     busy = true;
     if (button) button.disabled = true;
     setLive(liveNode, 'Loading questions...');
-    call('assign', state.respondent, true).then(function (res) {
+    call('assign', state.respondent, true, state.name).then(function (res) {
       busy = false;
       if (button) button.disabled = false;
       state.queue = state.queue.concat(res.items || []);
@@ -407,13 +412,26 @@
   }
 
   // ------------------------------------------------------------ wiring
-  el.consent.addEventListener('change', function () { el.startBtn.disabled = !el.consent.checked; });
+  function updateStart() {
+    el.startBtn.disabled = !el.consent.checked || !el.participantName.value.trim();
+  }
+  el.participantName.value = state.name || '';
+  el.consent.addEventListener('change', updateStart);
+  el.participantName.addEventListener('input', updateStart);
   el.startBtn.addEventListener('click', function () {
-    if (!el.consent.checked) return;
+    if (busy || !el.consent.checked || !el.participantName.value.trim()) return;
     state.respondent = state.respondent || newVisitId();
-    state.consent = true;
-    persist();
-    fetchRound(el.startLive, el.startBtn);
+    state.name = el.participantName.value.trim();
+    if (state.queue.length) {
+      // Preserve an existing round when an older anonymous tab is reopened.
+      busy = true; el.startBtn.disabled = true;
+      call('registerParticipant', state.respondent, true, state.name).then(function () {
+        state.consent = true; persist(); render();
+      }).catch(function (err) { state.name = ''; el.startLive.textContent = err.message || String(err); })
+        .finally(function () { busy = false; updateStart(); });
+    } else {
+      state.consent = true; persist(); fetchRound(el.startLive, el.startBtn);
+    }
   });
   el.saveBtn.addEventListener('click', saveAndNext);
   el.skipBtn.addEventListener('click', function () { if (!busy) advance(); });
